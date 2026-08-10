@@ -1,0 +1,10 @@
+:root{font-family:Inter,system-ui,sans-serif;color:#18392f;background:#edf4f0}
+*{box-sizing:border-box}body{margin:0}main{max-width:980px;margin:auto;padding:3rem 1.25rem}
+header{background:#145c45;color:white;padding:2rem;border-radius:18px}.eyebrow{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+h1{margin:.25rem 0;font-size:clamp(2rem,5vw,3.6rem)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin:1rem 0}
+article,.controls,aside{background:white;border:1px solid #c9dad2;border-radius:14px;padding:1.2rem;box-shadow:0 8px 24px #1232}
+article span,article small{display:block;color:#5e746b}article strong{display:inline-block;font-size:2.5rem;margin:.45rem .25rem .2rem 0}
+.controls label{display:block;margin:.8rem 0}.controls input{display:block;margin-top:.35rem;padding:.65rem;width:12rem}
+button{border:0;border-radius:9px;padding:.8rem 1rem;background:#145c45;color:white;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55}.danger{background:#a33a30}aside{margin-top:1rem;background:#fff6dc;border-color:#f5b942}
+

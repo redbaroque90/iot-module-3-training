@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Irrigation Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Raspberry Pi Zero 2 W · {{ mode|upper }} MODE</p>
+      <h1>Smart Irrigation Dashboard</h1>
+      <p>Live training telemetry with bounded pump control.</p>
+    </header>
+    <section class="grid" aria-live="polite">
+      <article><span>Temperature</span><strong id="temperature">--</strong><small>°C</small></article>
+      <article><span>Humidity</span><strong id="humidity">--</strong><small>% RH</small></article>
+      <article><span>Soil moisture</span><strong id="moisture">--</strong><small>%</small></article>
+      <article><span>Pump</span><strong id="pump">OFF</strong><small id="mode">{{ mode }}</small></article>
+    </section>
+    <section class="controls">
+      <h2>Supervised pump test</h2>
+      <label>Duration (maximum {{ max_duration }} seconds)
+        <input id="duration" type="number" min="0.1" max="{{ max_duration }}" step="0.1" value="{{ default_duration }}">
+      </label>
+      <div>
+        <button id="run">Run timed pump</button>
+        <button id="off" class="danger">Emergency software stop</button>
+      </div>
+      <p id="message">Ready.</p>
+    </section>
+    <aside>Keep the external pump-power disconnect accessible. Software stop is not an emergency power disconnect.</aside>
+  </main>
+  <script src="{{ url_for('static', path='/app.js') }}"></script>
+</body>
+</html>
