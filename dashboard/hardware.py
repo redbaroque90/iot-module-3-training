@@ -32,6 +32,8 @@ class HardwareController:
         self._pump_on = False
         self._closed = False
         self._relay = self._led = self._bus = None
+        self._dry_value = settings.dry_value
+        self._wet_value = settings.wet_value
 
     def initialize(self) -> None:
         self.settings.validate()
@@ -85,8 +87,8 @@ class HardwareController:
 
     def _moisture(self, raw: int) -> float:
         value = (
-            (self.settings.dry_value - raw)
-            / (self.settings.dry_value - self.settings.wet_value)
+            (self._dry_value - raw)
+            / (self._dry_value - self._wet_value)
             * 100
         )
         return max(0.0, min(100.0, value))
@@ -97,8 +99,8 @@ class HardwareController:
                 raise RuntimeError("Hardware controller is closed")
             if self.settings.hardware_mode == "mock":
                 raw = random.randint(
-                    min(self.settings.dry_value, self.settings.wet_value),
-                    max(self.settings.dry_value, self.settings.wet_value),
+                    min(self._dry_value, self._wet_value),
+                    max(self._dry_value, self._wet_value),
                 )
                 temperature, humidity = 27.5, 70.0
             else:
@@ -114,6 +116,19 @@ class HardwareController:
                 self._pump_on,
                 self.settings.hardware_mode,
             )
+
+    def set_calibration(self, dry_value: int, wet_value: int) -> None:
+        if dry_value == wet_value:
+            raise ValueError("Dry and wet calibration values must differ")
+        if not -32768 <= dry_value <= 32767 or not -32768 <= wet_value <= 32767:
+            raise ValueError("Calibration values must fit the ADS1115 signed range")
+        with self._state_lock:
+            self._dry_value = dry_value
+            self._wet_value = wet_value
+
+    def calibration(self) -> dict:
+        with self._state_lock:
+            return {"dry_value": self._dry_value, "wet_value": self._wet_value}
 
     def _set_outputs(self, on: bool) -> None:
         with self._state_lock:

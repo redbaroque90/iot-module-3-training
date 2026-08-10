@@ -11,7 +11,7 @@
     <header>
       <p class="eyebrow">Raspberry Pi Zero 2 W · {{ mode|upper }} MODE</p>
       <h1>Smart Irrigation Dashboard</h1>
-      <p>Live training telemetry with bounded pump control.</p>
+      <p>Live telemetry, SQLite history and bounded manual pump control.</p>
     </header>
     <section class="grid" aria-live="polite">
       <article><span>Temperature</span><strong id="temperature">--</strong><small>°C</small></article>
@@ -19,16 +19,48 @@
       <article><span>Soil moisture</span><strong id="moisture">--</strong><small>%</small></article>
       <article><span>Pump</span><strong id="pump">OFF</strong><small id="mode">{{ mode }}</small></article>
     </section>
+    <section class="charts" aria-label="Sensor history graphs">
+      <article class="chart-card">
+        <div class="chart-heading"><div><span>Temperature history</span><small>Separate SQLite series</small></div><strong id="temperature-trend">--</strong></div>
+        <canvas id="temperature-chart" role="img" aria-label="Temperature history graph"></canvas>
+      </article>
+      <article class="chart-card">
+        <div class="chart-heading"><div><span>Humidity history</span><small>Separate SQLite series</small></div><strong id="humidity-trend">--</strong></div>
+        <canvas id="humidity-chart" role="img" aria-label="Humidity history graph"></canvas>
+      </article>
+      <article class="chart-card">
+        <div class="chart-heading"><div><span>Soil-moisture history</span><small>Separate SQLite series</small></div><strong id="moisture-trend">--</strong></div>
+        <canvas id="moisture-chart" role="img" aria-label="Soil-moisture history graph"></canvas>
+      </article>
+    </section>
     <section class="controls">
-      <h2>Supervised pump test</h2>
+      <h2>Manual pump control</h2>
+      <p>The manual ON button always stops automatically at the selected duration.</p>
       <label>Duration (maximum {{ max_duration }} seconds)
         <input id="duration" type="number" min="0.1" max="{{ max_duration }}" step="0.1" value="{{ default_duration }}">
       </label>
       <div>
-        <button id="run">Run timed pump</button>
-        <button id="off" class="danger">Emergency software stop</button>
+        <button id="manual-on">Manual pump ON (timed)</button>
+        <button id="off" class="danger">Manual pump OFF</button>
       </div>
       <p id="message">Ready.</p>
+    </section>
+    <section class="calibration-panel">
+      <div>
+        <p class="section-kicker">Sensor configuration</p>
+        <h2>Soil-moisture calibration</h2>
+        <p>Enter the raw ADS1115 readings measured with the probe dry and wet. The values must be different.</p>
+      </div>
+      <form id="calibration-form">
+        <label>Dry raw value
+          <input id="dry-value" type="number" min="-32768" max="32767" required>
+        </label>
+        <label>Wet raw value
+          <input id="wet-value" type="number" min="-32768" max="32767" required>
+        </label>
+        <button id="save-calibration" type="submit">Save calibration</button>
+      </form>
+      <p id="calibration-message" class="form-message">Loading saved calibration...</p>
     </section>
     <aside>Keep the external pump-power disconnect accessible. Software stop is not an emergency power disconnect.</aside>
   </main>

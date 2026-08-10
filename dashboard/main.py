@@ -1,8 +1,11 @@
 """FastAPI smart-irrigation training dashboard."""
 
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
 import asyncio
 from pathlib import Path
+from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
@@ -12,14 +15,21 @@ from pydantic import BaseModel, Field
 
 from .config import Settings
 from .hardware import HardwareController
+from .storage import SensorStore
 
 BASE = Path(__file__).resolve().parent
 settings = Settings()
 hardware = HardwareController(settings)
+store = SensorStore(BASE / "data" / "irrigation.db")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await asyncio.to_thread(store.initialize)
+    dry_value, wet_value = await asyncio.to_thread(
+        store.calibration, settings.dry_value, settings.wet_value
+    )
+    await asyncio.to_thread(hardware.set_calibration, dry_value, wet_value)
     await asyncio.to_thread(hardware.initialize)
     try:
         yield
@@ -42,7 +52,12 @@ class PumpRequest(BaseModel):
     duration: float = Field(gt=0)
 
 
-def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+class CalibrationRequest(BaseModel):
+    dry_value: int = Field(ge=-32768, le=32767)
+    wet_value: int = Field(ge=-32768, le=32767)
+
+
+def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
     if settings.api_key and x_api_key != settings.api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
@@ -72,9 +87,31 @@ async def health():
 @app.get("/api/readings")
 async def readings():
     try:
-        return (await asyncio.to_thread(hardware.readings)).as_dict()
+        reading = (await asyncio.to_thread(hardware.readings)).as_dict()
+        await asyncio.to_thread(store.add_reading, reading)
+        return reading
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Sensor read failed: {exc}") from exc
+
+
+@app.get("/api/history")
+async def history(limit: int = 120):
+    safe_limit = max(10, min(limit, 500))
+    return {"readings": await asyncio.to_thread(store.history, safe_limit)}
+
+
+@app.get("/api/config/calibration")
+async def get_calibration():
+    return await asyncio.to_thread(hardware.calibration)
+
+
+@app.put("/api/config/calibration", dependencies=[Depends(require_api_key)])
+async def update_calibration(request: CalibrationRequest):
+    if request.dry_value == request.wet_value:
+        raise HTTPException(status_code=422, detail="Dry and wet values must be different")
+    await asyncio.to_thread(hardware.set_calibration, request.dry_value, request.wet_value)
+    await asyncio.to_thread(store.save_calibration, request.dry_value, request.wet_value)
+    return {"status": "saved", **(await asyncio.to_thread(hardware.calibration))}
 
 
 @app.post("/api/pump/timed", dependencies=[Depends(require_api_key)])
@@ -86,6 +123,7 @@ async def pump_timed(request: PumpRequest):
         )
     try:
         elapsed = await asyncio.to_thread(hardware.run_pump, request.duration)
+        await asyncio.to_thread(store.add_pump_event, "manual_timed", elapsed)
         return {"status": "completed", "elapsed_seconds": elapsed, "pump_on": False}
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -94,6 +132,7 @@ async def pump_timed(request: PumpRequest):
 @app.post("/api/pump/off", dependencies=[Depends(require_api_key)])
 async def pump_off():
     await asyncio.to_thread(hardware.pump_off)
+    await asyncio.to_thread(store.add_pump_event, "manual_stop")
     return {"status": "off", "pump_on": False}
 
 
