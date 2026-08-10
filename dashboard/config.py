@@ -27,7 +27,6 @@ class Settings:
     relay_active_high: bool = _bool("IOT_RELAY_ACTIVE_HIGH", True)
     default_pump_seconds: float = float(os.getenv("IOT_DEFAULT_PUMP_SECONDS", "3"))
     max_pump_seconds: float = float(os.getenv("IOT_MAX_PUMP_SECONDS", "5"))
-    api_key: str = os.getenv("IOT_API_KEY", "")
     enable_docs: bool = _bool("IOT_ENABLE_DOCS", False)
 
     def validate(self) -> None:
@@ -41,5 +40,3 @@ class Settings:
             raise ValueError("ADS1115 address must be between 0x48 and 0x4B")
         if not 0 < self.default_pump_seconds <= self.max_pump_seconds <= 5:
             raise ValueError("Pump duration must satisfy 0 < default <= maximum <= 5")
-        if self.hardware_mode == "real" and len(self.api_key) < 16:
-            raise ValueError("Real hardware mode requires IOT_API_KEY of at least 16 characters")

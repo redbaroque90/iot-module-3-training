@@ -1,10 +1,5 @@
 const $ = (id) => document.getElementById(id);
 const headers = {"Content-Type": "application/json"};
-const apiKey = sessionStorage.getItem("iotApiKey") || prompt("Pump-control API key (leave blank in mock mode):") || "";
-if (apiKey) {
-  sessionStorage.setItem("iotApiKey", apiKey);
-  headers["X-API-Key"] = apiKey;
-}
 
 async function updateReadings() {
   try {

@@ -5,9 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import asyncio
 from pathlib import Path
-from typing import Optional
-
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -57,11 +55,6 @@ class CalibrationRequest(BaseModel):
     wet_value: int = Field(ge=-32768, le=32767)
 
 
-def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
-    if settings.api_key and x_api_key != settings.api_key:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
-
-
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse(
@@ -105,7 +98,7 @@ async def get_calibration():
     return await asyncio.to_thread(hardware.calibration)
 
 
-@app.put("/api/config/calibration", dependencies=[Depends(require_api_key)])
+@app.put("/api/config/calibration")
 async def update_calibration(request: CalibrationRequest):
     if request.dry_value == request.wet_value:
         raise HTTPException(status_code=422, detail="Dry and wet values must be different")
@@ -114,7 +107,7 @@ async def update_calibration(request: CalibrationRequest):
     return {"status": "saved", **(await asyncio.to_thread(hardware.calibration))}
 
 
-@app.post("/api/pump/timed", dependencies=[Depends(require_api_key)])
+@app.post("/api/pump/timed")
 async def pump_timed(request: PumpRequest):
     if request.duration > settings.max_pump_seconds:
         raise HTTPException(
@@ -129,7 +122,7 @@ async def pump_timed(request: PumpRequest):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@app.post("/api/pump/off", dependencies=[Depends(require_api_key)])
+@app.post("/api/pump/off")
 async def pump_off():
     await asyncio.to_thread(hardware.pump_off)
     await asyncio.to_thread(store.add_pump_event, "manual_stop")

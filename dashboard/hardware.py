@@ -52,7 +52,6 @@ class HardwareController:
                 initial_value=False,
             )
             self.pump_off()
-            self.readings()
         except Exception:
             self.close()
             raise
@@ -60,12 +59,24 @@ class HardwareController:
     def _read_sht31(self) -> tuple[float, float]:
         from smbus2 import i2c_msg
 
-        self._bus.i2c_rdwr(
-            i2c_msg.write(self.settings.sht31_address, [0x24, 0x00])
-        )
-        time.sleep(0.02)
-        message = i2c_msg.read(self.settings.sht31_address, 6)
-        self._bus.i2c_rdwr(message)
+        message = None
+        for attempt in range(3):
+            try:
+                self._bus.i2c_rdwr(
+                    i2c_msg.write(self.settings.sht31_address, [0x24, 0x00])
+                )
+                time.sleep(0.02)
+                message = i2c_msg.read(self.settings.sht31_address, 6)
+                self._bus.i2c_rdwr(message)
+                break
+            except OSError as exc:
+                if attempt == 2:
+                    address = hex(self.settings.sht31_address)
+                    raise RuntimeError(
+                        f"SHT31 did not respond at {address}; run i2cdetect -y 1 "
+                        "and check 3.3 V, GND, SDA and SCL"
+                    ) from exc
+                time.sleep(0.05)
         data = list(message)
         raw_temperature = (data[0] << 8) | data[1]
         raw_humidity = (data[3] << 8) | data[4]
